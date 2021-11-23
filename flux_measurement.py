@@ -3,7 +3,7 @@ import sys
 from astropy.io import fits
 from scipy.optimize import curve_fit
 from photutils.detection import find_peaks
-from photutils.segmentation import detect_threshold, detect_sources, deblend_sources, SourceCatalog
+from photutils.segmentation import detect_threshold, detect_sources, deblend_sources, SourceCatalog, make_source_mask
 from photutils.aperture import CircularAperture, aperture_photometry
 from photutils.background import Background2D
 from astropy.stats import gaussian_fwhm_to_sigma
@@ -42,7 +42,8 @@ else:
 with fits.open(img_file) as f:
     data = f[0].data  # 1024 x 1024
 data[np.where(np.isnan(data))] = 0
-bckg = Background2D(data=data, box_size=4).background  # not sure how good this is but should help rather than hurt
+mask = make_source_mask(data, nsigma=15, npixels=5, dilate_size=11)
+bckg = Background2D(data=data, box_size=4, coverage_mask=mask, fill_value=0.0).background
 data = data - bckg
 threshold = detect_threshold(data=data, nsigma=15, mask_value=0.0)
 # END OF SET UP #
@@ -100,8 +101,10 @@ for _, loc in enumerate(locs):  # might use an index later on to modify loc befo
     numyvals, numxvals = len(yvals), len(xvals)
     yvals = np.array(list(yvals) * numxvals)
     xvals = np.array([[xval] * numyvals for xval in xvals]).flatten()
-
-    finalvals = [searchbox[int(y + finalsearchradius), int(x + finalsearchradius)] for y, x in zip(yvals, xvals)]
+    try:
+        finalvals = [searchbox[int(y + finalsearchradius), int(x + finalsearchradius)] for y, x in zip(yvals, xvals)]
+    except IndexError:
+        continue
 
     guesses = [estimated_peak * 0.9, estimated_fwhm, estimated_offset, 0, 0]
     bounds = ((0, 0, 0, -1 * estimated_fwhm / 2, -1 * estimated_fwhm / 2),
