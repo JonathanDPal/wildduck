@@ -9,38 +9,51 @@ from photutils.background import Background2D
 from astropy.stats import gaussian_fwhm_to_sigma
 from astropy.convolution import Gaussian2DKernel
 import pandas as pd
+import astroalign as aa
 
 
 def gaussian(xy, peak, Fwhm, offset, x0, y0):
+    """
+    Generic Gaussian function. Will be optimized by SciPy
+    """
     x, y = xy
     sigma = Fwhm / (2 * np.sqrt(2 * np.log(2)))
     return peak * np.exp(-((y - y0) ** 2 + (x - x0) ** 2) / (2 * sigma ** 2)) + offset
 
 
 def distance2(loc1, loc2):
+    """
+    Distance squared
+    """
     x0, y0, _ = loc1
     x1, y1, _ = loc2
     return (x1 - x0) ** 2 + (y1 - y0) ** 2
 
 
 # INITIAL SET UP #
-if len(sys.argv) == 4:
-    _, img_file, output_file, searchradius = sys.argv
-    searchradius = float(searchradius)
-    try:
-        assert int(searchradius) == searchradius
-    except AssertionError:
-        raise ValueError('Search radius needs to be an integer')
-    searchradius = int(searchradius)
+searchradius = 10
+if len(sys.argv) == 4:  # sys.argv is the set of command-line arguments
+    _, img_file, output_file, ref_img_file = sys.argv
+    alignimage = True
 elif len(sys.argv) == 3:
     _, img_file, output_file = sys.argv
-    searchradius = 10
+    alignimage = False
 else:
     raise ValueError('Incorrect number of arguments specified. First argument should be the filename for the image '
                      'and the second argument should be the output file.')
 
 with fits.open(img_file) as f:
-    data = f[0].data  # 1024 x 1024
+    img = f[0].data  # 1024 x 1024
+
+if alignimage:  # stars might be at different locations in different images, but if you use the same reference image
+    # for all of your flux measurements, then (x, y) locations will actually be aligned so then matching fluxes is
+    # really easy
+    with fits.open(ref_img_file) as f:
+        ref_img = f[0].data
+    data, _ = aa.register(img, ref_img)
+else:
+    data = img
+
 data[np.where(np.isnan(data))] = 0
 mask = make_source_mask(data, nsigma=15, npixels=5, dilate_size=11)
 bckg = Background2D(data=data, box_size=4, coverage_mask=mask, fill_value=0.0).background
@@ -103,7 +116,7 @@ for _, loc in enumerate(locs):  # might use an index later on to modify loc befo
     xvals = np.array([[xval] * numyvals for xval in xvals]).flatten()
     try:
         finalvals = [searchbox[int(y + finalsearchradius), int(x + finalsearchradius)] for y, x in zip(yvals, xvals)]
-    except IndexError:
+    except IndexError:  # I honestly don't know why this happens, but it doesn't happen often enough for me to care
         continue
 
     guesses = [estimated_peak * 0.9, estimated_fwhm, estimated_offset, 0, 0]
@@ -113,13 +126,13 @@ for _, loc in enumerate(locs):  # might use an index later on to modify loc befo
         optimalparams, covariance_matrix = curve_fit(f=gaussian, xdata=(yvals, xvals), ydata=finalvals,
                                                      p0=guesses, bounds=bounds)
     except RuntimeError:  # if SciPy can't find params and gives up
-        continue
+        continue  # also doesn't happen often enough for me to care
     optimalpeak, optimalfwhm, optimaloffset, optimalx0, optimaly0 = optimalparams
     fwhm_measurements.append(optimalfwhm)
 
 # average of measurements excluding outliers
 FWHM = np.mean([fm for fm in fwhm_measurements
-                if np.percentile(fwhm_measurements, 3) < fm < np.percentile(fwhm_measurements, 97)])
+                if np.percentile(fwhm_measurements, 5) < fm < np.percentile(fwhm_measurements, 95)])
 # END OF FINDING IMAGE FWHM #
 
 # GOAL OF THIS SECTION IS TO ACTUALLY MEASURE STAR FLUXES #
@@ -142,3 +155,5 @@ dataframe_data = {'X': xcenters, 'Y': ycenters, 'Flux': fluxes}
 
 df = pd.DataFrame(data=dataframe_data)
 df.to_csv(output_file, index=False)
+
+print(f'Measured FWHM was {np.round(FWHM, 3)}.')
