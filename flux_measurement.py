@@ -9,7 +9,6 @@ from photutils.background import Background2D
 from astropy.stats import gaussian_fwhm_to_sigma
 from astropy.convolution import Gaussian2DKernel
 import pandas as pd
-import astroalign as aa
 
 
 def gaussian(xy, peak, Fwhm, offset, x0, y0):
@@ -31,28 +30,11 @@ def distance2(loc1, loc2):
 
 
 # INITIAL SET UP #
-searchradius = 10
-if len(sys.argv) == 4:  # sys.argv is the set of command-line arguments
-    _, img_file, output_file, ref_img_file = sys.argv
-    alignimage = True
-elif len(sys.argv) == 3:
-    _, img_file, output_file = sys.argv
-    alignimage = False
-else:
-    raise ValueError('Incorrect number of arguments specified. First argument should be the filename for the image '
-                     'and the second argument should be the output file.')
+searchradius = 15
+_, img_file, output_file = sys.argv
 
 with fits.open(img_file) as f:
-    img = f[0].data  # 1024 x 1024
-
-if alignimage:  # stars might be at different locations in different images, but if you use the same reference image
-    # for all of your flux measurements, then (x, y) locations will actually be aligned so then matching fluxes is
-    # really easy
-    with fits.open(ref_img_file) as f:
-        ref_img = f[0].data
-    data, _ = aa.register(img, ref_img)
-else:
-    data = img
+    data = f[0].data  # 1024 x 1024
 
 data[np.where(np.isnan(data))] = 0
 mask = make_source_mask(data, nsigma=15, npixels=5, dilate_size=11)
