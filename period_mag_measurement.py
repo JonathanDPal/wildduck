@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import sys
 
-magfile = 'name of file'
+magfile = 'CY_Aqr_Data/Becca_CY_Aqr_9-28.csv'
 df = pd.read_csv(magfile)
 df = df[df['Magnitude'] < -0.71]
 x, y = df['JD'], df['Magnitude']
