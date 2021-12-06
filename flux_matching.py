@@ -2,19 +2,21 @@ import numpy as np
 import pandas as pd
 import astroalign as aa
 from astropy.io import fits
+import sys
 
 # USER INPUTS #
+_, direc, fwhm = sys.argv
 # Original images that flux measurements were made on
-r_imagefile = 'wild_duck/WildDuck-R-stack.fit'
-b_imagefile = 'wild_duck/WildDuck-B-stack.fit'
-v_imagefile = 'wild_duck/WildDuck-V-stack.fit'
+r_imagefile = f'{direc}/{direc}-R-stack.fit'
+b_imagefile = f'{direc}/{direc}-B-stack.fit'
+v_imagefile = f'{direc}/{direc}-V-stack.fit'
 # CSV files that were output of 'flux_measurement.py'
-r_fluxtable = 'wild_duck/wild_duck-Rfluxes.csv'
-b_fluxtable = 'wild_duck/wild_duck-Bfluxes.csv'
-v_fluxtable = 'wild_duck/wild_duck-Vfluxes.csv'
-FWHM = 8.5
+r_fluxtable = f'{direc}/{direc}-Rfluxes.csv'
+b_fluxtable = f'{direc}/{direc}-Bfluxes.csv'
+v_fluxtable = f'{direc}/{direc}-Vfluxes.csv'
+FWHM = float(fwhm)
 num_sat_stars = 5  # CANNOT BE ZERO
-output_file = 'wild_duck/wild_duck-fluxes.csv'
+output_file = f'{direc}/{direc}-fluxes.csv'
 # END OF USER INPUTS #
 
 
@@ -67,4 +69,3 @@ for _, row in v_fluxes.iterrows():
         compiled_data['V Flux'].append(row['Flux'])
 
 pd.DataFrame(compiled_data).to_csv(output_file, index=False)
-w
