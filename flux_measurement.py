@@ -31,7 +31,9 @@ def distance2(loc1, loc2):
 
 # INITIAL SET UP #
 searchradius = 15
-_, img_file, output_file = sys.argv
+_, direc, filter, ap_radius = sys.argv
+img_file = f'{direc}/{direc}-{filter}-stack.fit'
+output_file = f'{direc}/{direc}-{filter}fluxes.csv'
 
 with fits.open(img_file) as f:
     data = f[0].data  # 1024 x 1024
@@ -81,7 +83,10 @@ for _, loc in enumerate(locs):  # might use an index later on to modify loc befo
     if len(set(below_half).intersection(above_half)) > 0:
         fd2 = np.mean(list(set(below_half).intersection(above_half)))
     else:
-        fd2 = np.mean([np.min(below_half), np.max(above_half)])
+        try:
+            fd2 = np.mean([np.min(below_half), np.max(above_half)])
+        except ValueError:
+            continue
     estimated_fwhm = 2 * np.sqrt(fd2)
 
     # background has been subtracted so offset should be close to zero
@@ -102,8 +107,11 @@ for _, loc in enumerate(locs):  # might use an index later on to modify loc befo
         continue
 
     guesses = [estimated_peak * 0.9, estimated_fwhm, estimated_offset, 0, 0]
-    bounds = ((0, 0, 0, -1 * estimated_fwhm / 2, -1 * estimated_fwhm / 2),
-              (np.max(finalsearchbox) * 1.1, np.inf, np.max(finalsearchbox), estimated_fwhm / 2, estimated_fwhm / 2))
+    try:
+        bounds = ((0, 0, 0, -1 * estimated_fwhm / 2, -1 * estimated_fwhm / 2),
+                 (np.max(finalsearchbox) * 1.1, np.inf, np.max(finalsearchbox), estimated_fwhm / 2, estimated_fwhm / 2))
+    except ValueError:
+        continue
     try:
         optimalparams, covariance_matrix = curve_fit(f=gaussian, xdata=(yvals, xvals), ydata=finalvals,
                                                      p0=guesses, bounds=bounds)
@@ -129,13 +137,13 @@ cat_table = cat.to_table()
 positions = [(x, y) for x, y in zip(cat_table['xcentroid'], cat_table['ycentroid'])]
 
 # measure fluxes (normalized by area)
-aperature = CircularAperture(positions, r=3*FWHM)
+aperature = CircularAperture(positions, r=float(ap_radius) * FWHM)
 flux_table = aperture_photometry(data, aperature)
 xcenters, ycenters, fluxes = flux_table['xcenter'], flux_table['ycenter'], flux_table['aperture_sum']
-fluxes = np.array(fluxes) / (np.pi * ((3 * FWHM) ** 2))  # normalizing by area
+fluxes = np.array(fluxes) / (np.pi * ((float(ap_radius) * FWHM) ** 2))  # normalizing by area
 dataframe_data = {'X': xcenters, 'Y': ycenters, 'Flux': fluxes}
 
 df = pd.DataFrame(data=dataframe_data)
 df.to_csv(output_file, index=False)
 
-print(f'Measured FWHM was {np.round(FWHM, 3)}.')
+print(f'For {direc} in {filter}, measured FWHM was {np.round(FWHM, 3)}.')
