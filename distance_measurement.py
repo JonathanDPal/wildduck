@@ -38,5 +38,4 @@ for filter1, filter2 in zip(['B', 'B', 'V'], ['V', 'R', 'R']):
     dratios = np.sqrt(ref_fluxesfit / target_fluxesfit)
     distance_ratios.append(np.mean(dratios))
 
-print(distance_ratios)
 print(np.mean(distance_ratios))
