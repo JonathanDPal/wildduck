@@ -1,2 +1,2 @@
 # wildduck
-![Ze wild duck](WildDuck/WildDuck-V-stack.fit)
+![Ze wild duck](WildDuck/wild_duck_V.png)
