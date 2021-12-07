@@ -3,8 +3,10 @@ from scipy.stats import median_abs_deviation
 from glob import glob
 from astropy.io import fits
 import os
+import sys
 
-os.chdir('CY_Aqr_Data')
+_, direc = sys.argv
+os.chdir(direc)
 flatimages = [fits.open(flatfile)[0].data.flatten() for flatfile in glob('flats*')]
 darkimages = [fits.open(darkfile)[0].data.flatten() for darkfile in glob('dark*')]
 biasimages = [fits.open(biasfile)[0].data.flatten() for biasfile in glob('bias*')]
@@ -24,7 +26,7 @@ darkerror = np.mean([np.std([darkimage[index] for darkimage in darkimages]) /
 biaserror = np.mean([np.std([biasimage[index] for biasimage in biasimages]) /
                      np.mean([biasimage[index] for biasimage in biasimages]) for index in range(lbi)])
 
-with open('../errors.txt', 'w') as f:
+with open('errors.txt', 'w') as f:
     f.write(f'{flaterror}\n')
     f.write(f'{darkerror}\n')
     f.write(f'{biaserror}\n')
