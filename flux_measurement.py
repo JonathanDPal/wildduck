@@ -121,8 +121,10 @@ for _, loc in enumerate(locs):  # might use an index later on to modify loc befo
     fwhm_measurements.append(optimalfwhm)
 
 # average of measurements excluding outliers
-FWHM = np.mean([fm for fm in fwhm_measurements
-                if np.percentile(fwhm_measurements, 5) < fm < np.percentile(fwhm_measurements, 95)])
+FWHM, uncertainty = np.mean([fm for fm in fwhm_measurements if np.percentile(fwhm_measurements, 5) < fm <
+                             np.percentile(fwhm_measurements, 95)]), \
+                    np.std([fm for fm in fwhm_measurements if np.percentile(fwhm_measurements, 5) < fm <
+                             np.percentile(fwhm_measurements, 95)])
 # END OF FINDING IMAGE FWHM #
 
 # GOAL OF THIS SECTION IS TO ACTUALLY MEASURE STAR FLUXES #
@@ -146,4 +148,5 @@ dataframe_data = {'X': xcenters, 'Y': ycenters, 'Flux': fluxes}
 df = pd.DataFrame(data=dataframe_data)
 df.to_csv(output_file, index=False)
 
-print(f'For {direc} in {filter}, measured FWHM was {np.round(FWHM, 3)}.')
+print(f'For {direc} in {filter}, measured FWHM was {np.round(FWHM, 3)}, with an uncertainty of '
+      f'{round(uncertainty, 3)}.')
