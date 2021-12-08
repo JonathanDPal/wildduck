@@ -61,6 +61,6 @@ for filter1, filter2 in zip(['B', 'B', 'V'], ['V', 'R', 'R']):
     ref_fluxesfit = 100 ** (-1 * ref_magsfit / 5) * median_flux1
     target_fluxesfit = 100 ** (-1 * target_magsfit / 5) * median_flux2
     dratios = np.sqrt(ref_fluxesfit / target_fluxesfit)
-    distance_ratios.append(np.mean(dratios))
+    distance_ratios.append(dratios)
 
-print(np.mean(distance_ratios))
+print(np.mean(np.array(distance_ratios).flatten()), np.std(np.array(distance_ratios).flatten()))
